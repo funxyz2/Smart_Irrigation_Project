@@ -11,27 +11,37 @@
 from flask import Flask, request, jsonify
 import joblib
 import numpy as np
+import pandas as pd
 import requests
 import os
-import pandas as pd
+import logging
 from datetime import datetime, timezone
 from sklearn.preprocessing import StandardScaler
+from dotenv import load_dotenv
 from keras.models import load_model
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
-# Lấy API key từ biến môi trường
-from dotenv import load_dotenv
+# Load biến môi trường từ file .env
 load_dotenv()
 
 app = Flask(__name__)
+
+# Cấu hình ghi log ra file
+logging.basicConfig(
+    level=logging.INFO,
+    format="%(asctime)s - %(levelname)s - %(message)s",
+    handlers=[
+        logging.FileHandler("server.log"),
+        logging.StreamHandler()  # Ghi ra console (giúp xem dễ trên Render)
+    ]
+)
 
 model = load_model("deep_model.keras")
 scaler = joblib.load("scaler.pkl")
 y_scaler = joblib.load("y_scaler.pkl")
 
-
-OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") or "YOUR_API_KEY_HERE"
+OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") # or "YOUR_API_KEY_HERE"
 DEFAULT_LOCATION = {"lat": 10.762622, "lon": 106.660172}  # TP.HCM
 
 @app.route("/predict", methods=["POST"])
@@ -43,42 +53,61 @@ def predict():
         temperature = data.get("temperature")
         soil_moisture = data.get("soil_moisture")
         water_level = data.get("water_level")
-        last_watered_timestamp = data.get("last_watered_timestamp")  # epoch hoặc ISO string
-        
-        if None in (temperature, soil_moisture, water_level, last_watered_timestamp):
-            return jsonify({"error": "Thiếu temperature, soil_moisture, water_level hoặc last_watered_timestamp"}), 400
+        humidity_air = data.get("humidity_air")
+        # dùng int vì dataset được train với last_watered_hour là int
+        last_watered_hour = int(data.get("last_watered_hour"))  # epoch hoặc ISO string
 
-        last_watered_hour = calculate_last_watered_hour(last_watered_timestamp)
+        if None in (temperature, soil_moisture, water_level, humidity_air, last_watered_hour):
+            logging.warning(f"Dữ liệu thiếu: {data}")
+            return jsonify({"error": "Thiếu temperature, soil_moisture, water_level, humidity_air hoặc last_watered_hour"}), 400
+
+        logging.info(f"📥 Nhận từ ESP32: temp={temperature}, soil={soil_moisture}, water={water_level}, humidity={humidity_air}, last_watered_hour={last_watered_hour}")
+
         weather_data = get_weather_data()
+        logging.info(f"🌤 Dữ liệu thời tiết: {weather_data}")
 
         full_data = {
             "temperature": temperature,
             "soil_moisture": soil_moisture,
             "water_level": water_level,
-            "humidity_air": weather_data.get("humidity_air"),
+            "humidity_air": humidity_air,
             "light_intensity": weather_data.get("light_intensity"),
             "time_of_day": weather_data.get("time_of_day"),
             "rain_prediction": weather_data.get("rain_prediction"),
             "last_watered_hour": last_watered_hour
         }
 
-        # Chuyển về DataFrame để giữ tên cột
-        X_input = pd.DataFrame([full_data])  # DataFrame 1 dòng
+        feature_order = [
+            "temperature",
+            "soil_moisture",
+            "water_level",
+            "humidity_air",
+            "light_intensity",
+            "time_of_day",
+            "rain_prediction",
+            "last_watered_hour"
+        ]
 
-        # Xử lý thiếu giá trị nếu cần
+        """
+        Xử lý dữ liệu
+        Gửi đến model để dự đoán
+        Trả về kết quả cho ESP32
+        """
+        # Đảm bảo đúng thứ tự cột
+        X_input = pd.DataFrame([full_data])
         X_input.fillna(0, inplace=True)
 
-        # Chuẩn hóa nếu cần
+        # Chuẩn hóa đầu vào
         input_scaled = scaler.transform(X_input)
 
         # Dự đoán
         prediction = model.predict(input_scaled)
-        
+
         # Giải chuẩn hóa đầu ra
         predicted_ml = y_scaler.inverse_transform(prediction.reshape(-1, 1))
-        
-        # Trả kết quả dưới dạng số thực
         result = float(predicted_ml[0][0])
+
+        logging.info(f"✅ Dự đoán: {result:.2f} ml nước")
         print(f"✅ Dự đoán: {result:.2f} ml nước")
 
         return jsonify(result)
@@ -100,39 +129,24 @@ def get_weather_data():
         estimated_lux = int(100000 * (1 - cloudiness / 100))
 
         return {
-            "humidity_air": data["main"]["humidity"],
             "light_intensity": estimated_lux,
             "time_of_day": get_time_of_day(),
             "rain_prediction": 1 if "rain" in data else 0
         }
 
     except Exception as e:
+        logging.warning(f"⚠️ Không lấy được dữ liệu thời tiết: {e}")
         print("⚠️ Không lấy được dữ liệu thời tiết:", e)
+        print("Vì không thể connect được API OpenWeather, ta giả định trời có mây, không mưa và lấy thời gian được lưu trên mạch làm chuẩn.")
         return {
-            "humidity_air": None,
-            "light_intensity": None,
-            "time_of_day": None,
-            "rain_prediction": None
+            "light_intensity": 20000, # giả định có mây
+            "time_of_day": get_time_of_day(),
+            "rain_prediction": 0
         }
 
 def get_time_of_day():
     now = datetime.utcnow().hour + 7  # giờ VN
     return now % 24
-
-# Hàm tính thời gian từ lần tưới cuối
-def calculate_last_watered_hour(last_timestamp):
-    try:
-        if isinstance(last_timestamp, str):  # ISO 8601 string
-            last_time = datetime.fromisoformat(last_timestamp)
-        else:  # epoch timestamp
-            last_time = datetime.fromtimestamp(float(last_timestamp), tz=timezone.utc)
-        
-        now = datetime.now(timezone.utc)
-        diff_hours = (now - last_time).total_seconds() / 3600.0
-        return round(diff_hours, 2)
-    except Exception as e:
-        print("⚠️ Lỗi parse thời gian tưới:", e)
-        return None
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000)
