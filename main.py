@@ -13,8 +13,12 @@ import joblib
 import numpy as np
 import requests
 import os
+import pandas as pd
 from datetime import datetime, timezone
 from sklearn.preprocessing import StandardScaler
+from keras.models import load_model
+
+# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 # Lấy API key từ biến môi trường
 from dotenv import load_dotenv
@@ -22,8 +26,10 @@ load_dotenv()
 
 app = Flask(__name__)
 
-model = joblib.load("model.pkl")
+model = load_model("deep_model.keras")
 scaler = joblib.load("scaler.pkl")
+y_scaler = joblib.load("y_scaler.pkl")
+
 
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") or "YOUR_API_KEY_HERE"
 DEFAULT_LOCATION = {"lat": 10.762622, "lon": 106.660172}  # TP.HCM
@@ -38,7 +44,7 @@ def predict():
         soil_moisture = data.get("soil_moisture")
         water_level = data.get("water_level")
         last_watered_timestamp = data.get("last_watered_timestamp")  # epoch hoặc ISO string
-
+        
         if None in (temperature, soil_moisture, water_level, last_watered_timestamp):
             return jsonify({"error": "Thiếu temperature, soil_moisture, water_level hoặc last_watered_timestamp"}), 400
 
@@ -56,28 +62,23 @@ def predict():
             "last_watered_hour": last_watered_hour
         }
 
-        feature_order = [
-            "temperature",
-            "soil_moisture",
-            "water_level",
-            "humidity_air",
-            "light_intensity",
-            "time_of_day",
-            "rain_prediction",
-            "last_watered_hour"
-        ]
+        # Chuyển về DataFrame để giữ tên cột
+        X_input = pd.DataFrame([full_data])  # DataFrame 1 dòng
 
-        input_list = [full_data.get(f) if full_data.get(f) is not None else 0 for f in feature_order]
-        input_array = np.array([input_list]) # 2D array cho mô hình
+        # Xử lý thiếu giá trị nếu cần
+        X_input.fillna(0, inplace=True)
 
         # Chuẩn hóa nếu cần
-        input_scaled = scaler.transform(input_array)
+        input_scaled = scaler.transform(X_input)
 
         # Dự đoán
         prediction = model.predict(input_scaled)
-
-        # Đưa về định dạng số thực
-        result = float(prediction[0][0])
+        
+        # Giải chuẩn hóa đầu ra
+        predicted_ml = y_scaler.inverse_transform(prediction.reshape(-1, 1))
+        
+        # Trả kết quả dưới dạng số thực
+        result = float(predicted_ml[0][0])
         print(f"✅ Dự đoán: {result:.2f} ml nước")
 
         return jsonify(result)
@@ -133,3 +134,5 @@ def calculate_last_watered_hour(last_timestamp):
         print("⚠️ Lỗi parse thời gian tưới:", e)
         return None
 
+if __name__ == "__main__":
+    app.run(debug=True, host="0.0.0.0", port=5000)
