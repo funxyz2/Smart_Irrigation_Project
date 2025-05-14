@@ -1,0 +1,25 @@
+# Byte-compiled / cache files
+__pycache__/
+*.py[cod]
+*$py.class
+# Virtual environments
+venv/
+.venv
+.env
+*.env
+# Jupyter notebook checkpoints
+.ipynb_checkpoints/
+# Jupyter runtime
+~$*.ipynb
+# VSCode settings
+.vscode/
+# System files
+.DS_Store
+Thumbs.db
+# Logs and temporary files
+*.log
+*.tmp
+*.bak
+*.swp
+# Excel cache or autosave
+~$*.xlsx
