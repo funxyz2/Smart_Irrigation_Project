@@ -10,12 +10,12 @@
 
 from flask import Flask, request, jsonify
 import joblib
-import numpy as np
 import pandas as pd
 import requests
 import os
 import logging
-from datetime import datetime, timezone
+from datetime import datetime
+from datetime import timedelta
 from sklearn.preprocessing import StandardScaler
 from dotenv import load_dotenv
 from keras.models import load_model
@@ -100,7 +100,7 @@ def predict():
         Trả về kết quả cho ESP32
         """
         # Đảm bảo đúng thứ tự cột
-        X_input = pd.DataFrame([full_data])
+        X_input = pd.DataFrame([full_data])[feature_order]
         X_input.fillna(0, inplace=True)
 
         # Chuẩn hóa đầu vào
@@ -160,8 +160,9 @@ def blynk_notify(message):
         raise Exception(f"Blynk notify failed: {response.status_code}")
 
 def get_time_of_day():
-    now = datetime.utcnow().hour + 7  # giờ VN
-    return now % 24
+    now_utc = datetime.utcnow()
+    now_vn = now_utc + timedelta(hours=7)
+    return now_vn.hour
 
 if __name__ == "__main__":
     app.run(debug=True, host="0.0.0.0", port=5000, threaded=True)
