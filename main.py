@@ -33,11 +33,13 @@ app = Flask(__name__)
 logging.basicConfig(
     level=logging.INFO,
     format="%(asctime)s - %(levelname)s - %(message)s",
+     datefmt="%Y-%m-%d %H:%M:%S",
     handlers=[
-        logging.FileHandler("server.log"), # Ghi vào server.log
-        logging.StreamHandler()  # Ghi ra console (giúp xem dễ trên Render)
-    ]
+        logging.FileHandler("server.log"),
+        logging.StreamHandler()
+    ],
 )
+logging.Formatter.converter = lambda *args: time.gmtime(time.time() + 7*3600)
 
 model = load_model("deep_model.keras")
 scaler = joblib.load("scaler.pkl")
