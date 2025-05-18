@@ -23,3 +23,5 @@ Thumbs.db
 *.swp
 # Excel cache or autosave
 ~$*.xlsx
+# ESP32 header files
+secrets.h

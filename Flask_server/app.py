@@ -41,9 +41,10 @@ logging.basicConfig(
 )
 logging.Formatter.converter = lambda *args: time.gmtime(time.time() + 7*3600)
 
-model = load_model("deep_model.keras")
-scaler = joblib.load("scaler.pkl")
-y_scaler = joblib.load("y_scaler.pkl")
+# Kết nối AI model trong server
+model = load_model("models/deep_model.keras")
+scaler = joblib.load("models/scaler.pkl")
+y_scaler = joblib.load("models/y_scaler.pkl")
 
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") # or "YOUR_API_KEY_HERE"
 DEFAULT_LOCATION = {"lat": 10.762622, "lon": 106.660172}  # TP.HCM, VietNam
