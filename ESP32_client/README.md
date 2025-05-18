@@ -100,13 +100,6 @@ Hệ thống tưới tiêu thông minh sử dụng ESP32, cảm biến độ ẩ
 
 ---
 
-## 👤 Tác giả
-
-* 👤 [thomasNguyen-196](https://github.com/thomasNguyen-196)
-* 👤 [funxyz2](https://github.com/funxyz2)
-
----
-
 ## 🔗 Tham khảo
 
 * 🛒 Mua linh kiện tại [Hshop](https://hshop.vn/)
