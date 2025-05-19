@@ -47,7 +47,7 @@ Hệ thống tưới tiêu thông minh sử dụng ESP32, cảm biến độ ẩ
 
 ## 🧠 Server học máy
 
-* **API URL**: `https://dl_api.tung196.id.vn/predict`
+* **API URL Format**: `https://my_api_url.com/predict`
 * Gửi dữ liệu qua HTTP POST dạng JSON:
 
 ```json

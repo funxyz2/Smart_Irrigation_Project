@@ -1,5 +1,3 @@
-# README tổng hợp
-
 # Dự án hệ thống tưới cây thông minh ESP32 kết hợp DL
 
 Hệ thống tưới cây thông minh kết hợp ESP32 với máy chủ Flask tích hợp mô hình học máy để tối ưu hóa lượng nước tưới dựa trên điều kiện môi trường thực tế.
