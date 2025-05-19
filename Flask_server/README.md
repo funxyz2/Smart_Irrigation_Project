@@ -92,6 +92,8 @@
     * Nhập nội dung như trên
     * Chọn "Save As", đặt tên là `.env`, chọn "All Files" trong phần "Save as type", và lưu vào thư mục dự án.
 
+---
+
 ## Cách chạy
 
 * **Trên macOS/Linux**:
@@ -108,6 +110,77 @@
   python app.py
   ```
 
+* **Bằng Docker** *(Khuyến nghị – cách triển khai chính của nhóm)*:
+
+  1. **Tạo file `Dockerfile`** với nội dung sau:
+
+     ```Dockerfile
+     # Use a lightweight Python image with TensorFlow support
+     FROM python:3.11-slim
+
+     ENV PYTHONUNBUFFERED=1
+
+     WORKDIR /app
+
+     RUN apt-get update && apt-get install -y --no-install-recommends \
+         build-essential \
+         && rm -rf /var/lib/apt/lists/*
+
+     COPY requirements.txt .
+     RUN pip install --no-cache-dir -r requirements.txt
+
+     COPY . .
+
+     EXPOSE 5050
+
+     CMD ["python", "app.py"]
+     ```
+
+  2. **Tạo file `docker-compose.yml`** với nội dung sau:
+
+     ```yaml
+     version: '3.8'
+
+     services:
+       app:
+         build: .
+         container_name: my_dl_server
+         ports:
+           - "5050:5050"
+         env_file:
+           - .env
+         restart: unless-stopped
+         volumes:
+           - .:/app
+     ```
+
+  3. **Cấu trúc thư mục triển khai Docker:** *(Tất cả các file nằm chung một thư mục)*
+
+     ```plaintext
+     /project-folder
+     ├── app.py
+     ├── server.log
+     ├── requirements.txt
+     ├── .env
+     ├── Dockerfile
+     ├── docker-compose.yml
+     ├── deep_model.keras
+     ├── scaler.pkl
+     ├── y_scaler.pkl
+     ```
+
+  4. **Chạy ứng dụng bằng Docker Compose:**
+
+     ```bash
+     docker-compose up --build
+     ```
+
+     Lần sau nếu không thay đổi code, bạn chỉ cần chạy:
+
+     ```bash
+     docker-compose up
+     ```
+     
 ## Endpoint
 
 **POST** `/predict`
