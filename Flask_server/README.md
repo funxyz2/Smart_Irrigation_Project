@@ -45,6 +45,7 @@
 ## Yêu cầu môi trường
 
 * Python **3.11**
+
 * Tạo môi trường ảo:
 
   ```bash
@@ -52,23 +53,60 @@
   source venv/bin/activate  # trên macOS/Linux
   venv\Scripts\activate     # trên Windows
   ```
+
 * Cài thư viện:
 
   ```bash
   pip install -r requirements.txt
   ```
-* File `.env` cần chứa các biến môi trường:
+
+* Tạo file `.env` chứa các biến môi trường:
+
+  Nội dung file `.env`:
 
   ```env
   OPENWEATHER_API_KEY=your_openweather_api_key
   BLYNK_AUTH_TOKEN=your_blynk_token
   ```
 
+  **Cách tạo file `.env`:**
+
+  * **Trên macOS/Linux**:
+
+    ```bash
+    touch .env
+    nano .env  # hoặc dùng bất kỳ trình soạn thảo nào bạn thích
+    ```
+
+  * **Trên Windows**:
+    Mở Command Prompt hoặc PowerShell:
+
+    ```powershell
+    echo OPENWEATHER_API_KEY=your_openweather_api_key > .env
+    echo BLYNK_AUTH_TOKEN=your_blynk_token >> .env
+    ```
+
+    Hoặc dùng Notepad:
+
+    * Mở Notepad
+    * Nhập nội dung như trên
+    * Chọn "Save As", đặt tên là `.env`, chọn "All Files" trong phần "Save as type", và lưu vào thư mục dự án.
+
 ## Cách chạy
 
-```bash
-python app.py
-```
+* **Trên macOS/Linux**:
+
+  ```bash
+  source venv/bin/activate
+  python app.py
+  ```
+
+* **Trên Windows**:
+
+  ```bash
+  venv\Scripts\activate
+  python app.py
+  ```
 
 ## Endpoint
 
