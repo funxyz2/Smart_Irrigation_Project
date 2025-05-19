@@ -154,7 +154,7 @@
            - .:/app
      ```
 
-  3. **Cấu trúc thư mục triển khai Docker:** *(Tất cả các file nằm chung một thư mục)*
+  3. **Cấu trúc thư mục triển khai Docker:** *(Tất cả các file nằm chung một thư mục, riêng mô hình nằm trong thư mục `models/`)*
 
      ```plaintext
      /project-folder
@@ -164,9 +164,11 @@
      ├── .env
      ├── Dockerfile
      ├── docker-compose.yml
-     ├── deep_model.keras
-     ├── scaler.pkl
-     ├── y_scaler.pkl
+     ├── models
+     │   ├── deep_model.keras
+     │   ├── scaler.pkl
+     │   └── y_scaler.pkl
+     └── (các file mã nguồn và tài nguyên khác)
      ```
 
   4. **Chạy ứng dụng bằng Docker Compose:**
@@ -180,7 +182,7 @@
      ```bash
      docker-compose up
      ```
-     
+   
 ## Endpoint
 
 **POST** `/predict`
