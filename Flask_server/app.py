@@ -22,6 +22,8 @@ from dotenv import load_dotenv
 from keras.models import load_model
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
+from urllib.parse import quote_plus
+
 
 # os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
@@ -49,6 +51,7 @@ y_scaler = joblib.load("models/y_scaler.pkl")
 
 OPENWEATHER_API_KEY = os.getenv("OPENWEATHER_API_KEY") # or "YOUR_API_KEY_HERE"
 DEFAULT_LOCATION = {"lat": 10.762622, "lon": 106.660172}  # TP.HCM, VietNam
+BLYNK_AUTH_TOKEN = os.getenv("BLYNK_AUTH_TOKEN")
 
 @app.route("/predict", methods=["POST"])
 def predict():
@@ -65,6 +68,7 @@ def predict():
 
         if None in (temperature, soil_moisture, water_level, humidity_air, last_watered_hour):
             logging.warning(f"Dữ liệu thiếu: {data}")
+            blynk_warning(f"Dữ liệu thiếu: {data}")
             return jsonify({"error": "Thiếu temperature, soil_moisture, water_level, humidity_air hoặc last_watered_hour"}), 400
 
         logging.info(f"📥 Nhận từ ESP32: temp={temperature}, soil={soil_moisture}, water={water_level}, humidity={humidity_air}, last_watered_hour={last_watered_hour}")
@@ -72,6 +76,7 @@ def predict():
         weather_data = get_weather_data()
         if isinstance(weather_data, str) and weather_data == "-1":
             logging.warning("⚠️ Dự báo thời tiết không khả dụng. Trả về -1ml.")
+            blynk_warning("⚠️ Dự báo thời tiết không khả dụng. Trả về -1ml.")
             return str(-1)
 
         logging.info(f"🌤 Dữ liệu thời tiết: {weather_data}")
@@ -154,14 +159,16 @@ def get_weather_data():
 
     except Exception as e:
         logging.error(f"❌ Không lấy được dữ liệu thời tiết, trả về -1ml, lỗi: {e}")
-        blynk_notify("⚠️ Không lấy được thời tiết! Vui lòng kiểm tra.")
+        blynk_warning("⚠️ Không lấy được thời tiết! Vui lòng kiểm tra.")
         return str(-1)
 
-def blynk_notify(message):
-    url = f"https://blynk.cloud/external/api/notify?token={BLYNK_AUTH_TOKEN}&message={message}"
+# Gửi message cảnh báo (chuỗi string) đến pin ảo V9 của Blynk
+def blynk_warning(message):
+    encoded_msg = quote_plus(message)
+    url = f"https://blynk.cloud/external/api/update?token={BLYNK_AUTH_TOKEN}&V9={encoded_msg}"
     response = requests.get(url, timeout=5)
     if response.status_code != 200:
-        raise Exception(f"Blynk notify failed: {response.status_code}")
+        raise Exception(f"Blynk V9 update failed: {response.status_code}")
 
 def get_time_of_day():
     now_utc = datetime.utcnow()
