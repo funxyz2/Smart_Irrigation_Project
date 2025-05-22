@@ -11,21 +11,19 @@
 from flask import Flask, request, jsonify
 import joblib
 import pandas as pd
+import numpy as np
 import requests
 import os
 import logging
 import time
-from datetime import datetime
-from datetime import timedelta
+import torch
+from datetime import datetime, timedelta
 from sklearn.preprocessing import StandardScaler
 from dotenv import load_dotenv
 from keras.models import load_model
 from requests.adapters import HTTPAdapter
 from urllib3.util.retry import Retry
 from urllib.parse import quote_plus
-
-
-# os.environ["CUDA_VISIBLE_DEVICES"] = "-1"
 
 # Load biến môi trường từ file .env
 load_dotenv()
@@ -44,8 +42,43 @@ logging.basicConfig(
 )
 logging.Formatter.converter = lambda *args: time.gmtime(time.time() + 7*3600)
 
-# Kết nối AI model trong server
-model = load_model("models/deep_model.keras")
+# Thiết bị tính toán
+device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
+
+# Load PyTorch model và scalers
+class WaterNet(torch.nn.Module):
+    def __init__(self, input_dim):
+        super(WaterNet, self).__init__()
+        self.model = torch.nn.Sequential(
+            torch.nn.Linear(input_dim, 128),
+            torch.nn.BatchNorm1d(128),
+            torch.nn.LeakyReLU(0.1),
+            torch.nn.Dropout(0.2),
+            torch.nn.Linear(128, 64),
+            torch.nn.BatchNorm1d(64),
+            torch.nn.LeakyReLU(0.1),
+            torch.nn.Dropout(0.2),
+            torch.nn.Linear(64, 32),
+            torch.nn.BatchNorm1d(32),
+            torch.nn.LeakyReLU(0.1),
+            torch.nn.Dropout(0.1),
+            torch.nn.Linear(32, 16),
+            torch.nn.BatchNorm1d(16),
+            torch.nn.LeakyReLU(0.1),
+            torch.nn.Linear(16, 8),
+            torch.nn.LeakyReLU(0.1),
+            torch.nn.Linear(8, 1)
+        )
+
+    def forward(self, x):
+        return self.model(x)
+
+# Khởi tạo và load model
+model = WaterNet(10).to(device)  # 10 features như trong quá trình training
+model.load_state_dict(torch.load("models/deep_model.pth", map_location=device))
+model.eval()
+
+# Load scalers
 scaler = joblib.load("models/scaler.pkl")
 y_scaler = joblib.load("models/y_scaler.pkl")
 
@@ -81,26 +114,29 @@ def predict():
 
         logging.info(f"🌤 Dữ liệu thời tiết: {weather_data}")
 
+         # Feature engineering giống như khi training
+        time_of_day = weather_data.get("time_of_day")
         full_data = {
             "temperature": temperature,
             "soil_moisture": soil_moisture,
             "water_level": water_level,
             "humidity_air": humidity_air,
             "light_intensity": weather_data.get("light_intensity"),
-            "time_of_day": weather_data.get("time_of_day"),
+            "time_of_day": time_of_day,
             "rain_prediction": weather_data.get("rain_prediction"),
-            "last_watered_hour": last_watered_hour
+            "last_watered_hour": last_watered_hour,
+            # Thêm các features mới như khi training
+            "time_sin": np.sin(2 * np.pi * time_of_day / 24),
+            "time_cos": np.cos(2 * np.pi * time_of_day / 24),
+            "hours_since_watered": (last_watered_hour) % 24,
+            "drought_index": temperature / (humidity_air + 1) * 10
         }
 
+        # Thứ tự features phải giống hệt khi training
         feature_order = [
-            "temperature",
-            "soil_moisture",
-            "water_level",
-            "humidity_air",
-            "light_intensity",
-            "time_of_day",
-            "rain_prediction",
-            "last_watered_hour"
+            "temperature", "soil_moisture", "water_level", "humidity_air",
+            "light_intensity", "rain_prediction", "time_sin", "time_cos",
+            "hours_since_watered", "drought_index"
         ]
 
         """
@@ -108,22 +144,21 @@ def predict():
         Gửi đến model để dự đoán
         Trả về kết quả cho ESP32
         """
-        # Đảm bảo đúng thứ tự cột
+        # Tạo DataFrame và chuẩn hóa
         X_input = pd.DataFrame([full_data])[feature_order]
         X_input.fillna(0, inplace=True)
-
-        # Chuẩn hóa đầu vào
         input_scaled = scaler.transform(X_input)
 
-        # Dự đoán
-        prediction = model.predict(input_scaled)
+        # Chuyển sang tensor và dự đoán
+        input_tensor = torch.tensor(input_scaled, dtype=torch.float32).to(device)
+        with torch.no_grad():
+            prediction_scaled = model(input_tensor).cpu().numpy()
 
         # Giải chuẩn hóa đầu ra
-        predicted_ml = y_scaler.inverse_transform(prediction.reshape(-1, 1))
+        predicted_ml = y_scaler.inverse_transform(prediction_scaled.reshape(-1, 1))
         result = float(predicted_ml[0][0])
-        rounded_result = abs(int(round(result)))  # Làm tròn và lấy trị tuyệt đối
+        rounded_result = abs(int(round(result)))
 
-        
         logging.info(f"✅ Dự đoán: {rounded_result} ml nước")
         print(f"✅ Dự đoán: {rounded_result} ml nước")
 
