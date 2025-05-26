@@ -346,11 +346,8 @@ plt.savefig('results/feature_importance.png')
 
 # Lưu mô hình và scaler
 print("\nLưu mô hình và scaler...")
-# Thay vì chỉ lưu state_dict
-torch.save({
-    'model_state_dict': model.state_dict(),
-    'model_architecture': model  # Lưu cả kiến trúc
-}, 'results/deep_model.pth')
+# lưu state_dict
+torch.save(model.state_dict(), 'results/deep_model.pth')
 joblib.dump(scaler, 'results/scaler.pkl')
 joblib.dump(y_scaler, 'results/y_scaler.pkl')
 joblib.dump(history, 'results/training_history.pkl')
