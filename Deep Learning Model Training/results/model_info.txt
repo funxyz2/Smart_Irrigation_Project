@@ -1,0 +1,41 @@
+Model Architecture:
+WaterNet(
+  (model): Sequential(
+    (0): Linear(in_features=10, out_features=128, bias=True)
+    (1): BatchNorm1d(128, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (2): LeakyReLU(negative_slope=0.1)
+    (3): Dropout(p=0.2, inplace=False)
+    (4): Linear(in_features=128, out_features=64, bias=True)
+    (5): BatchNorm1d(64, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (6): LeakyReLU(negative_slope=0.1)
+    (7): Dropout(p=0.2, inplace=False)
+    (8): Linear(in_features=64, out_features=32, bias=True)
+    (9): BatchNorm1d(32, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (10): LeakyReLU(negative_slope=0.1)
+    (11): Dropout(p=0.1, inplace=False)
+    (12): Linear(in_features=32, out_features=16, bias=True)
+    (13): BatchNorm1d(16, eps=1e-05, momentum=0.1, affine=True, track_running_stats=True)
+    (14): LeakyReLU(negative_slope=0.1)
+    (15): Linear(in_features=16, out_features=8, bias=True)
+    (16): LeakyReLU(negative_slope=0.1)
+    (17): Linear(in_features=8, out_features=1, bias=True)
+  )
+)
+
+Input Features (10):
+- temperature
+- soil_moisture
+- water_level
+- humidity_air
+- light_intensity
+- rain_prediction
+- time_sin
+- time_cos
+- hours_since_watered
+- drought_index
+
+Test Metrics:
+- MSE: 255.4134
+- RMSE: 15.9817
+- MAE: 5.0897
+- R²: 0.8951
