@@ -1,121 +1,121 @@
 # Flask-based-server-for-Smart-Irrigation-System
 
-## Mô tả dự án
+## Description
 
-🌿 Đây là một phần trong hệ thống tưới cây thông minh sử dụng vi điều khiển ESP32. Dự án bao gồm một API server viết bằng Flask, đóng vai trò như một mô-đun trung gian để ESP32 gửi dữ liệu cảm biến và nhận về quyết định tưới nước.
+This is part of a smart irrigation system using the ESP32 microcontroller. The project includes a Flask API server that acts as an intermediary module: ESP32 sends sensor data and receives watering decisions.
 
-🚿 Máy chủ này nhận các thông số từ ESP32 như nhiệt độ, độ ẩm đất, độ ẩm không khí, mực nước trong bồn, thời điểm tưới gần nhất... Sau đó, nó kết hợp những dữ liệu này với thông tin thời tiết lấy từ OpenWeatherMap (độ che phủ mây, khả năng có mưa, thời điểm trong ngày, v.v.). Dữ liệu tổng hợp sẽ được chuẩn hóa và đưa vào mô hình AI (deep learning) đã được huấn luyện sẵn. Kết quả dự đoán là lượng nước (ml) cần tưới cho cây tại thời điểm đó.
+The server receives parameters from ESP32 such as temperature, soil moisture, air humidity, water tank level, and the last watering time. It then combines this data with weather information from OpenWeatherMap (cloud cover, rain probability, time of day, etc.). The aggregated data is normalized and fed into a pre-trained deep learning model. The predicted output is the amount of water (ml) needed for the plants at that moment.
 
-💡 Mục tiêu của hệ thống là tối ưu hóa lượng nước tưới dựa theo điều kiện môi trường thực tế và dự báo thời tiết, giúp tiết kiệm tài nguyên và tự động hóa quá trình chăm sóc cây trồng.
+The goal is to optimize water usage based on actual environmental conditions and weather forecasts, saving resources and automating plant care.
 
-## Các thông tin đầu vào cho mô hình
+## Model Input Features
 
-| Trường              | Ý nghĩa                                             |
-| ------------------- | --------------------------------------------------- |
-| `temperature`       | Nhiệt độ không khí (°C)                             |
-| `soil_moisture`     | Độ ẩm đất (%)                                       |
-| `water_level`       | Mức nước bồn chứa (%)                               |
-| `humidity_air`      | Độ ẩm không khí (%)                                 |
-| `last_watered_hour` | Giờ tưới lần cuối (24h, múi giờ Việt Nam)           |
-| `cloudiness`        | Độ che phủ mây (từ OpenWeather API)                 |
-| `rain_expected`     | Có mưa hay không (bool, từ trường "rain" trong API) |
-| `lux`               | Cường độ ánh sáng (suy ra từ độ che phủ mây)        |
-| `hour_now`          | Giờ hiện tại (24h, múi giờ Việt Nam)                |
+| Field               | Description                                        |
+| ------------------- | -------------------------------------------------- |
+| `temperature`       | Air temperature (°C)                               |
+| `soil_moisture`     | Soil moisture (%)                                  |
+| `water_level`       | Water tank level (%)                               |
+| `humidity_air`      | Air humidity (%)                                   |
+| `last_watered_hour` | Last watering hour (24h, Vietnam timezone)          |
+| `cloudiness`        | Cloud cover percentage (from OpenWeather API)      |
+| `rain_expected`     | Rain expected (bool, from "rain" field in API)     |
+| `lux`               | Light intensity (derived from cloud cover)         |
+| `hour_now`          | Current hour (24h, Vietnam timezone)               |
 
-## Luồng hoạt động
+## Workflow
 
-1. ESP32 gửi dữ liệu cảm biến qua POST request tới endpoint `/predict`
-2. Server nhận và log dữ liệu
-3. Gọi API OpenWeather để lấy dữ liệu thời tiết:
+1. ESP32 sends sensor data via POST request to endpoint `/predict`
+2. Server receives and logs the data
+3. Calls OpenWeather API to fetch weather data:
 
-   * Lấy độ che phủ mây → tính lux: `lux = int(100000 * (1 - cloudiness / 100))`
-   * Kiểm tra có trường "rain" trong JSON không để xác định có mưa không
-4. Kết hợp dữ liệu sensor + thời tiết, chuẩn hóa, đưa vào mô hình AI
-5. Mô hình dự đoán số ml nước cần tưới
-6. Server ghi log và trả về cho ESP32
+   * Gets cloud cover percentage → calculates lux: `lux = int(100000 * (1 - cloudiness / 100))`
+   * Checks for "rain" field in JSON to determine rain probability
+4. Combines sensor + weather data, normalizes, runs through the AI model
+5. Model predicts the ml of water needed
+6. Server logs the result and returns it to ESP32
 
-## Mô tả chi tiết
+## Technical Details
 
 * Framework: **Flask**
-* Mô hình: **Keras deep learning model** (`.keras`)
-* Dữ liệu chuẩn hóa: **StandardScaler (pickle)**
-* API thời tiết: **OpenWeatherMap**
-* Gửi cảnh báo khi lỗi: **Blynk Notify**
+* Model: **PyTorch deep learning model** (`.pth`)
+* Data normalization: **StandardScaler (pickle)**
+* Weather API: **OpenWeatherMap**
+* Error alerts: **Blynk Notify**
 
-## Yêu cầu môi trường
+## Environment Setup
 
 * Python **3.11**
 
-* Tạo môi trường ảo:
+* Create a virtual environment:
 
   ```bash
   python -m venv venv
-  source venv/bin/activate  # trên macOS/Linux
-  venv\Scripts\activate     # trên Windows
+  source venv/bin/activate  # on macOS/Linux
+  venv\Scripts\activate     # on Windows
   ```
 
-* Cài thư viện:
+* Install dependencies:
 
   ```bash
   pip install -r requirements.txt
   ```
 
-* Tạo file `.env` chứa các biến môi trường:
+* Create a `.env` file with environment variables:
 
-  Nội dung file `.env`:
+  `.env` file contents:
 
   ```env
   OPENWEATHER_API_KEY=your_openweather_api_key
   BLYNK_AUTH_TOKEN=your_blynk_token
   ```
 
-  **Cách tạo file `.env`:**
+  **How to create the `.env` file:**
 
-  * **Trên macOS/Linux**:
+  * **On macOS/Linux**:
 
     ```bash
     touch .env
-    nano .env  # hoặc dùng bất kỳ trình soạn thảo nào bạn thích
+    nano .env  # or any text editor you prefer
     ```
 
-  * **Trên Windows**:
-    Mở Command Prompt hoặc PowerShell:
+  * **On Windows**:
+    Open Command Prompt or PowerShell:
 
     ```powershell
     echo OPENWEATHER_API_KEY=your_openweather_api_key > .env
     echo BLYNK_AUTH_TOKEN=your_blynk_token >> .env
     ```
 
-    Hoặc dùng Notepad:
+    Or using Notepad:
 
-    * Mở Notepad
-    * Nhập nội dung như trên
-    * Chọn "Save As", đặt tên là `.env`, chọn "All Files" trong phần "Save as type", và lưu vào thư mục dự án.
+    * Open Notepad
+    * Enter the content as shown above
+    * Select "Save As", name it `.env`, choose "All Files" in "Save as type", and save it in the project directory.
 
 ---
 
-## Cách chạy
+## Running the Server
 
-* **Trên macOS/Linux**:
+* **On macOS/Linux**:
 
   ```bash
   source venv/bin/activate
   python app.py
   ```
 
-* **Trên Windows**:
+* **On Windows**:
 
   ```bash
   venv\Scripts\activate
   python app.py
   ```
 
-* **Bằng Docker** *(Khuyến nghị – cách triển khai chính của nhóm)*:
+* **Using Docker** *(Recommended – the team's primary deployment method)*:
 
-  1. **Tạo file `Dockerfile`** với nội dung sau:
+  1. **Create a `Dockerfile`** with the following content:
 
-     ```Dockerfile
-     # Use a lightweight Python image with TensorFlow support
+     ```dockerfile
+     # Use a lightweight Python image
      FROM python:3.11-slim
 
      ENV PYTHONUNBUFFERED=1
@@ -136,7 +136,7 @@
      CMD ["python", "app.py"]
      ```
 
-  2. **Tạo file `docker-compose.yml`** với nội dung sau:
+  2. **Create a `docker-compose.yml`** file with the following content:
 
      ```yaml
      version: '3.8'
@@ -154,7 +154,7 @@
            - .:/app
      ```
 
-  3. **Cấu trúc thư mục triển khai Docker:** *(Tất cả các file nằm chung một thư mục, riêng mô hình nằm trong thư mục `models/`)*
+  3. **Docker deployment directory structure:** *(All files in the same directory; model files are in `models/`)*
 
      ```plaintext
      /project-folder
@@ -165,29 +165,31 @@
      ├── Dockerfile
      ├── docker-compose.yml
      ├── models
-     │   ├── deep_model.keras
+     │   ├── deep_model.pth
      │   ├── scaler.pkl
      │   └── y_scaler.pkl
-     └── (các file mã nguồn và tài nguyên khác)
+     └── (other source and resource files)
      ```
 
-  4. **Chạy ứng dụng bằng Docker Compose:**
+  4. **Run with Docker Compose:**
 
      ```bash
      docker-compose up --build
      ```
 
-     Lần sau nếu không thay đổi code, bạn chỉ cần chạy:
+     On subsequent runs (no code changes), simply:
 
      ```bash
      docker-compose up
      ```
-   
+
+---
+
 ## Endpoint
 
 **POST** `/predict`
 
-### Payload JSON mẫu:
+### Sample JSON Payload:
 
 ```json
 {
@@ -199,29 +201,28 @@
 }
 ```
 
-### Kết quả trả về:
+### Response:
 
 ```json
-180  // nghĩa là cần tưới 180ml nước
+180  // means 180ml of water needed
 ```
 
-> Bạn cũng có thể thay đổi để trả về kiểu JSON như sau nếu muốn mở rộng:
+> You can also change this to return JSON for extensibility:
 >
 > ```json
 > { "water_amount": 180 }
 > ```
 
-## Ghi log
+## Logging
 
-* Log được ghi vào file `server.log`
-* Mỗi log có timestamp theo múi giờ GMT+7
+* Logs are written to `server.log`
+* Each log entry has a GMT+7 timestamp
 
-## Ghi chú
+## Notes
 
-* Trong trường hợp không lấy được dữ liệu thời tiết, API trả về `-1`
-* Server sẽ tự động retry OpenWeather API tối đa 3 lần nếu gặp lỗi
+* If weather data cannot be retrieved, the API returns `-1`
+* The server automatically retries the OpenWeather API up to 3 times on failure
 
 ---
 
-🌿 *Bạn có thể dùng Postman hoặc ESP32 để gửi test payload tới server.*
-
+*You can use Postman or ESP32 to send test payloads to the server.*

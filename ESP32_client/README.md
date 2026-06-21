@@ -1,54 +1,54 @@
-# 🌱 SMART IRRIGATION SYSTEM with ESP32
+# SMART IRRIGATION SYSTEM with ESP32
 
-Hệ thống tưới tiêu thông minh sử dụng ESP32, cảm biến độ ẩm đất, cảm biến nhiệt độ/độ ẩm DHT22, cảm biến mực nước và tích hợp điều khiển từ xa qua ứng dụng Blynk. Hệ thống còn tích hợp mô hình học máy (ML) từ server Flask để đưa ra lượng nước tưới chính xác cho cây trồng.
-
----
-
-## 🚀 Tính năng
-
-* Đo độ ẩm đất, nhiệt độ, độ ẩm không khí và mực nước tự động
-* Gửi dữ liệu lên server Flask định kỳ để nhận dự đoán lượng nước tưới
-* Tưới cây tự động dựa trên kết quả mô hình ML
-* Chế độ thủ công: Người dùng có thể bật/tắt bơm từ app Blynk
-* Giao diện giám sát và điều khiển trên ứng dụng **Blynk**
+Smart irrigation system using ESP32, soil moisture sensor, DHT22 temperature/humidity sensor, water level sensor, and remote control via Blynk app. The system also integrates an ML model from the Flask server to provide precise watering amounts for plants.
 
 ---
 
-## 🔧 Phần cứng cần thiết
+## Features
 
-| Thiết bị                    | Mô tả                         |
-| --------------------------- | ----------------------------- |
-| ESP32                       | Vi điều khiển chính           |
-| Cảm biến độ ẩm đất (Analog) | Cắm vào chân GPIO33           |
-| Cảm biến mực nước (Analog)  | Cắm vào chân GPIO34           |
-| Cảm biến DHT22              | Nhiệt độ và độ ẩm (GPIO32)    |
-| Rơ-le + Máy bơm mini        | Điều khiển tưới tiêu (GPIO23) |
+* Automatically measures soil moisture, temperature, air humidity, and water level
+* Periodically sends data to the Flask server to receive watering predictions
+* Auto-watering based on ML model results
+* Manual mode: Users can turn the pump on/off from the Blynk app
+* Monitoring and control interface on **Blynk** app
 
 ---
 
-## 🌐 Kết nối Blynk
+## Required Hardware
+
+| Device                      | Description                  |
+| --------------------------- | ---------------------------- |
+| ESP32                       | Main microcontroller         |
+| Soil Moisture Sensor (Analog) | Connected to GPIO33        |
+| Water Level Sensor (Analog)   | Connected to GPIO34        |
+| DHT22 Sensor                | Temperature & humidity (GPIO32) |
+| Relay + Mini Water Pump     | Irrigation control (GPIO23)  |
+
+---
+
+## Blynk Connection
 
 * **Template ID**: `...`
 * **Template Name**: `SMART IRRIGATION ESP32`
 * **Auth Token**: `...`
-* **Các Virtual Pins sử dụng**:
+* **Virtual Pins Used**:
 
-| VPin | Chức năng                     |
-| ---- | ----------------------------- |
-| V0   | Nhiệt độ (°C)                 |
-| V1   | Độ ẩm không khí (%)           |
-| V2   | Độ ẩm đất (%)                 |
-| V3   | Mực nước (%)                  |
-| V4   | Bật/tắt bơm                   |
-| V5   | Chuyển đổi chế độ Auto/Manual |
-| V7   | Kết quả dự đoán ML (ml nước)  |
+| VPin | Function                    |
+| ---- | --------------------------- |
+| V0   | Temperature (°C)            |
+| V1   | Air Humidity (%)            |
+| V2   | Soil Moisture (%)           |
+| V3   | Water Level (%)             |
+| V4   | Pump On/Off                 |
+| V5   | Auto/Manual Mode Switch     |
+| V7   | ML Prediction Result (ml)   |
 
 ---
 
-## 🧠 Server học máy
+## ML Server
 
 * **API URL Format**: `https://my_api_url.com/predict`
-* Gửi dữ liệu qua HTTP POST dạng JSON:
+* Sends data via HTTP POST as JSON:
 
 ```json
 {
@@ -60,48 +60,48 @@ Hệ thống tưới tiêu thông minh sử dụng ESP32, cảm biến độ ẩ
 }
 ```
 
-* Nhận lại phản hồi là lượng nước cần tưới (ml), ví dụ: `"250.0"`
+* Receives the watering amount (ml) as response, e.g.: `"250.0"`
 
 ---
 
-## ⚙️ Cài đặt & Upload mã
+## Setup & Upload
 
-1. Cài đặt Arduino IDE và thêm ESP32 board: [ESP32 Board Manager](https://github.com/espressif/arduino-esp32)
-2. Cài các thư viện:
+1. Install Arduino IDE and add ESP32 board: [ESP32 Board Manager](https://github.com/espressif/arduino-esp32)
+2. Install libraries:
 
    * `DHT sensor library by Adafruit`
    * `Blynk`
-   * `HTTPClient` (có sẵn trong ESP32)
-3. Nạp mã vào ESP32
-4. Kiểm tra kết nối WiFi và đăng nhập ứng dụng Blynk
+   * `HTTPClient` (built-in for ESP32)
+3. Upload the code to ESP32
+4. Check WiFi connection and log into the Blynk app
 
 ---
 
-## 📝 Lưu ý
+## Notes
 
-* Server Flask cần luôn hoạt động để mô hình ML có thể dự đoán.
-* Mực nước quá thấp (`< 20%`) thì hệ thống không tưới (đảm bảo an toàn cho máy bơm).
-* Trong chế độ Auto, người dùng không thể điều khiển bơm thủ công.
-* Bơm được điều khiển dựa trên thời gian tương ứng với lượng nước tính toán (`ml / 10ml/s`).
-
----
-
-## 📸 Giao diện Blynk đề xuất
-
-| Widget | Loại | Virtual Pin     | Ghi chú |
-| ------ | ---- | --------------- | ------- |
-| Gauge  | V0   | Temperature     |         |
-| Gauge  | V1   | Humidity        |         |
-| Gauge  | V2   | Soil Moisture   |         |
-| Gauge  | V3   | Water Level     |         |
-| Switch | V4   | Bơm tay         |         |
-| Switch | V5   | Auto/Manual     |         |
-| Label  | V7   | Kết quả ML (ml) |         |
+* The Flask server must be running for the ML model to make predictions.
+* If the water level is too low (`< 20%`), the system will not water (to protect the pump).
+* In Auto mode, the user cannot manually control the pump.
+* The pump runs for a duration proportional to the calculated water amount (`ml / 10ml/s`).
 
 ---
 
-## 🔗 Tham khảo
+## Recommended Blynk Widget Layout
 
-* 🛒 Mua linh kiện tại [Hshop](https://hshop.vn/)
-* 📘 Tài liệu và hướng dẫn về IoT nói chung: [Arduino.vn](http://arduino.vn/)
-* 🎓 Học kiến thức về Machine Learning/Deep Learning: [Coursera](https://www.coursera.org/) (các khóa học miễn phí chất lượng cao)
+| Widget | Type   | Virtual Pin     | Notes          |
+| ------ | ------ | --------------- | -------------- |
+| Gauge  | V0     | Temperature     |                |
+| Gauge  | V1     | Humidity        |                |
+| Gauge  | V2     | Soil Moisture   |                |
+| Gauge  | V3     | Water Level     |                |
+| Switch | V4     | Manual Pump     |                |
+| Switch | V5     | Auto/Manual     |                |
+| Label  | V7     | ML Result (ml)  |                |
+
+---
+
+## References
+
+* Buy components at [Hshop](https://hshop.vn/)
+* IoT documentation and tutorials: [Arduino.vn](http://arduino.vn/)
+* Machine Learning/Deep Learning courses: [Coursera](https://www.coursera.org/) (high-quality free courses)

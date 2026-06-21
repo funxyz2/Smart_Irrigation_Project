@@ -15,29 +15,29 @@ import os
 import warnings
 warnings.filterwarnings('ignore')
 
-# Tạo thư mục cho kết quả
+# Create output directory
 os.makedirs('results', exist_ok=True)
 
-# Đọc dữ liệu
-print("Đang đọc dữ liệu...")
+# Load data
+print("Reading data...")
 df = pd.read_excel("smart_irrigation_dataset_1000.xlsx")
 
-# Kiểm tra dữ liệu
-print("Thông tin dữ liệu:")
+# Data inspection
+print("Data info:")
 print(df.info())
-print("\nMô tả thống kê:")
+print("\nDescriptive statistics:")
 print(df.describe())
 
-# Xử lý dữ liệu thiếu
+# Handle missing data
 missing_data = df.isnull().sum()
-print("\nDữ liệu thiếu:")
+print("\nMissing data:")
 print(missing_data)
 if missing_data.sum() > 0:
-    # Thay thế bằng giá trị trung bình
+    # Fill with mean values
     df = df.fillna(df.mean())
-    print("Đã xử lý dữ liệu thiếu bằng giá trị trung bình")
+    print("Missing data filled with mean values")
 
-# Kiểm tra và xử lý outliers
+# Detect and handle outliers
 def detect_outliers(df, column):
     Q1 = df[column].quantile(0.25)
     Q3 = df[column].quantile(0.75)
@@ -47,7 +47,7 @@ def detect_outliers(df, column):
     outliers = df[(df[column] < lower_bound) | (df[column] > upper_bound)]
     return outliers, lower_bound, upper_bound
 
-print("\nKiểm tra dữ liệu ngoại lệ:")
+print("\nChecking for outliers:")
 outliers_count = 0
 for col in df.select_dtypes(include=np.number).columns:
     outliers, _, _ = detect_outliers(df, col)
@@ -55,35 +55,35 @@ for col in df.select_dtypes(include=np.number).columns:
         outliers_count += len(outliers)
         print(f"- {col}: {len(outliers)} outliers")
 
-# Sử dụng RobustScaler nếu có nhiều outliers
+# Use RobustScaler if many outliers exist
 use_robust_scaler = outliers_count > len(df) * 0.05
-print(f"\nTổng số outliers: {outliers_count}")
-print(f"Sử dụng RobustScaler: {use_robust_scaler}")
+print(f"\nTotal outliers: {outliers_count}")
+print(f"Using RobustScaler: {use_robust_scaler}")
 
 # Feature engineering
-print("\nThực hiện feature engineering...")
+print("\nPerforming feature engineering...")
 
-# Cyclical encoding cho time_of_day (24h)
+# Cyclical encoding for time_of_day (24h)
 df['time_sin'] = np.sin(2 * np.pi * df['time_of_day'] / 24)
 df['time_cos'] = np.cos(2 * np.pi * df['time_of_day'] / 24)
 
-# Feature mới: Thời gian kể từ lần tưới cuối
+# New feature: hours since last watering
 df['hours_since_watered'] = (df['last_watered_hour']) % 24
 
-# Chỉ số khô hạn (ví dụ đơn giản)
+# Drought index (simple heuristic)
 df['drought_index'] = df['temperature'] / (df['humidity_air'] + 1) * 10
 
-# Tách input/output
-print("\nChuẩn bị dữ liệu cho mô hình...")
+# Split input/output
+print("\nPreparing data for model...")
 X = df.drop(["ml_water", "time_of_day", "last_watered_hour"], axis=1)
 y = df["ml_water"]
 
-# In ra các features được sử dụng
-print(f"Features sử dụng ({X.shape[1]}):")
+# Print used features
+print(f"Features used ({X.shape[1]}):")
 for col in X.columns:
     print(f"- {col}")
 
-# Chia train/validation/test
+# Train/validation/test split
 X_train, X_temp, y_train, y_temp = train_test_split(
     X, y, test_size=0.3, random_state=42
 )
@@ -91,12 +91,12 @@ X_val, X_test, y_val, y_test = train_test_split(
     X_temp, y_temp, test_size=0.5, random_state=42
 )
 
-print(f"\nKích thước dữ liệu:")
-print(f"- Train: {X_train.shape[0]} mẫu")
-print(f"- Validation: {X_val.shape[0]} mẫu")
-print(f"- Test: {X_test.shape[0]} mẫu")
+print(f"\nDataset sizes:")
+print(f"- Train: {X_train.shape[0]} samples")
+print(f"- Validation: {X_val.shape[0]} samples")
+print(f"- Test: {X_test.shape[0]} samples")
 
-# Chuẩn hóa dữ liệu
+# Normalize data
 if use_robust_scaler:
     scaler = RobustScaler()
     y_scaler = RobustScaler()
@@ -112,9 +112,9 @@ y_train_scaled = y_scaler.fit_transform(y_train.values.reshape(-1, 1))
 y_val_scaled = y_scaler.transform(y_val.values.reshape(-1, 1))
 y_test_scaled = y_scaler.transform(y_test.values.reshape(-1, 1))
 
-# Chuyển sang Tensor + Dataloader
+# Convert to Tensor + DataLoader
 device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-print(f"\nSử dụng thiết bị: {device}")
+print(f"\nUsing device: {device}")
 
 X_train_tensor = torch.tensor(X_train_scaled, dtype=torch.float32).to(device)
 y_train_tensor = torch.tensor(y_train_scaled, dtype=torch.float32).to(device)
@@ -130,7 +130,7 @@ batch_size = 32
 train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
 val_loader = DataLoader(val_dataset, batch_size=batch_size)
 
-# Xây mô hình
+# Build model
 class WaterNet(nn.Module):
     def __init__(self, input_dim):
         super(WaterNet, self).__init__()
@@ -164,7 +164,7 @@ class WaterNet(nn.Module):
         return self.model(x)
 
 model = WaterNet(X_train_scaled.shape[1]).to(device)
-print("\nCấu trúc mô hình:")
+print("\nModel architecture:")
 print(model)
 
 # Loss, Optimizer
@@ -172,7 +172,7 @@ criterion = nn.MSELoss()
 optimizer = optim.Adam(model.parameters(), lr=1e-3, weight_decay=1e-5)
 scheduler = ReduceLROnPlateau(optimizer, mode='min', factor=0.5, patience=10, min_lr=1e-6)
 
-# Hàm đánh giá mô hình
+# Model evaluation function
 def evaluate_model(model, X_tensor, y_true, y_scaler):
     model.eval()
     with torch.no_grad():
@@ -193,8 +193,8 @@ def evaluate_model(model, X_tensor, y_true, y_scaler):
         'predictions': y_pred
     }
 
-# Train mô hình
-print("\nBắt đầu huấn luyện mô hình...")
+# Train model
+print("\nStarting model training...")
 epochs = 1000
 patience = 20
 best_val_loss = float("inf")
@@ -214,7 +214,7 @@ for epoch in range(epochs):
         outputs = model(X_batch)
         loss = criterion(outputs, y_batch)
         loss.backward()
-        # Gradient clipping để tránh exploding gradients
+        # Gradient clipping to prevent exploding gradients
         torch.nn.utils.clip_grad_norm_(model.parameters(), max_norm=1.0)
         optimizer.step()
         train_epoch_loss += loss.item()
@@ -233,12 +233,12 @@ for epoch in range(epochs):
     val_loss = val_loss / len(val_loader)
     current_lr = optimizer.param_groups[0]['lr']
     
-    # Lưu lịch sử
+    # Save history
     history['train_loss'].append(train_loss)
     history['val_loss'].append(val_loss)
     history['lr'].append(current_lr)
     
-    # Hiển thị thông tin
+    # Display progress
     if (epoch + 1) % 10 == 0:
         print(f"Epoch {epoch+1}/{epochs}, Train Loss: {train_loss:.6f}, Val Loss: {val_loss:.6f}, LR: {current_lr:.8f}")
     
@@ -253,14 +253,14 @@ for epoch in range(epochs):
     else:
         counter += 1
         if counter >= patience:
-            print(f"Early stopping triggered sau {epoch+1} epochs.")
+            print(f"Early stopping triggered after {epoch+1} epochs.")
             break
 
-# Tải mô hình tốt nhất
+# Load best model
 model.load_state_dict(best_model)
 
-# Đánh giá mô hình trên tập test
-print("\nĐánh giá mô hình trên tập test:")
+# Evaluate on test set
+print("\nEvaluating model on test set:")
 test_metrics = evaluate_model(model, X_test_tensor, y_test.values, y_scaler)
 
 print(f"- MSE: {test_metrics['mse']:.4f}")
@@ -268,14 +268,14 @@ print(f"- RMSE: {test_metrics['rmse']:.4f}")
 print(f"- MAE: {test_metrics['mae']:.4f}")
 print(f"- R²: {test_metrics['r2']:.4f}")
 
-# Vẽ biểu đồ kết quả
-# 1. Biểu đồ so sánh giá trị thực tế và dự đoán
+# Generate result charts
+# 1. Actual vs Predicted comparison
 plt.figure(figsize=(10, 8))
 plt.scatter(y_test, test_metrics['predictions'], alpha=0.6)
 plt.plot([y_test.min(), y_test.max()], [y_test.min(), y_test.max()], 'r--')
-plt.title('So sánh giá trị thực tế và dự đoán')
-plt.xlabel('Giá trị thực tế (ml)')
-plt.ylabel('Giá trị dự đoán (ml)')
+plt.title('Actual vs Predicted Values')
+plt.xlabel('Actual (ml)')
+plt.ylabel('Predicted (ml)')
 plt.grid(True)
 plt.text(0.05, 0.95, f"MSE: {test_metrics['mse']:.2f}\nRMSE: {test_metrics['rmse']:.2f}\nMAE: {test_metrics['mae']:.2f}\nR²: {test_metrics['r2']:.4f}",
          transform=plt.gca().transAxes, fontsize=12, verticalalignment='top',
@@ -283,13 +283,13 @@ plt.text(0.05, 0.95, f"MSE: {test_metrics['mse']:.2f}\nRMSE: {test_metrics['rmse
 plt.tight_layout()
 plt.savefig('results/prediction_comparison.png')
 
-# 2. Biểu đồ quá trình huấn luyện
+# 2. Training history
 plt.figure(figsize=(12, 8))
 
 plt.subplot(2, 1, 1)
 plt.plot(history['train_loss'], label='Train Loss')
 plt.plot(history['val_loss'], label='Validation Loss')
-plt.title('Quá trình huấn luyện')
+plt.title('Training History')
 plt.ylabel('Loss')
 plt.yscale('log')
 plt.grid(True)
@@ -306,18 +306,18 @@ plt.grid(True)
 plt.tight_layout()
 plt.savefig('results/training_history.png')
 
-# 3. Biểu đồ phân phối lỗi
+# 3. Error distribution
 plt.figure(figsize=(10, 6))
 errors = y_test - test_metrics['predictions']
 plt.hist(errors, bins=30, alpha=0.7, color='blue')
 plt.axvline(x=0, color='red', linestyle='--')
-plt.title('Phân phối lỗi dự đoán')
-plt.xlabel('Lỗi (ml)')
-plt.ylabel('Tần suất')
+plt.title('Prediction Error Distribution')
+plt.xlabel('Error (ml)')
+plt.ylabel('Frequency')
 plt.grid(True)
 plt.savefig('results/error_distribution.png')
 
-# 4. Biểu đồ Feature Importance
+# 4. Feature Importance
 def calculate_feature_importance(model, X_scaled, feature_names):
     importance = []
     model.eval()
@@ -344,15 +344,15 @@ plt.xlabel('Relative Importance')
 plt.tight_layout()
 plt.savefig('results/feature_importance.png')
 
-# Lưu mô hình và scaler
-print("\nLưu mô hình và scaler...")
-# lưu state_dict
+# Save model and scalers
+print("\nSaving model and scalers...")
+# Save state_dict
 torch.save(model.state_dict(), 'results/deep_model.pth')
 joblib.dump(scaler, 'results/scaler.pkl')
 joblib.dump(y_scaler, 'results/y_scaler.pkl')
 joblib.dump(history, 'results/training_history.pkl')
 
-# Lưu thông tin mô hình
+# Save model info
 with open('results/model_info.txt', 'w') as f:
     f.write(f"Model Architecture:\n{model}\n\n")
     f.write(f"Input Features ({X.shape[1]}):\n")
@@ -364,8 +364,8 @@ with open('results/model_info.txt', 'w') as f:
     f.write(f"- MAE: {test_metrics['mae']:.4f}\n")
     f.write(f"- R²: {test_metrics['r2']:.4f}\n")
 
-# Dự đoán cho dữ liệu mới
-print("\nDự đoán cho dữ liệu mới:")
+# Predict for new data
+print("\nPredicting for new data:")
 input_data = {
     "temperature": 31.5,
     "soil_moisture": 40.2,
@@ -377,19 +377,19 @@ input_data = {
     "last_watered_hour": 9
 }
 
-# Feature engineering cho dữ liệu mới
+# Feature engineering for new data
 input_data["time_sin"] = np.sin(2 * np.pi * input_data["time_of_day"] / 24)
 input_data["time_cos"] = np.cos(2 * np.pi * input_data["time_of_day"] / 24)
 input_data["hours_since_watered"] = (input_data["last_watered_hour"]) % 24
 input_data["drought_index"] = input_data["temperature"] / (input_data["humidity_air"] + 1) * 10
 
-# Xóa các features không sử dụng
+# Remove unused features
 keys_to_remove = ["time_of_day", "last_watered_hour"]
 for key in keys_to_remove:
     if key in input_data:
         del input_data[key]
 
-# Chuyển thành DataFrame
+# Convert to DataFrame
 X_input = pd.DataFrame([input_data])
 X_scaled = scaler.transform(X_input)
 X_tensor = torch.tensor(X_scaled, dtype=torch.float32).to(device)
@@ -399,7 +399,7 @@ with torch.no_grad():
     pred_scaled = model(X_tensor).cpu().numpy()
     prediction = y_scaler.inverse_transform(pred_scaled)[0][0]
 
-print(f"Lượng nước dự đoán: {prediction:.2f} ml")
+print(f"Predicted water amount: {prediction:.2f} ml")
 
-print("\nQuá trình huấn luyện và đánh giá hoàn tất!")
-print("Các kết quả đã được lưu trong thư mục 'results/'")
+print("\nTraining and evaluation complete!")
+print("Results saved in 'results/' directory")

@@ -1,1 +1,1 @@
-### Đây là file readme dùng để mô tả cách cấu hình model AI
+### This README describes how to configure the AI model

@@ -1,37 +1,37 @@
-# Dự án hệ thống tưới cây thông minh ESP32 kết hợp DL
+# ESP32 Smart Irrigation System with Deep Learning
 
-Hệ thống tưới cây thông minh kết hợp ESP32 với máy chủ Flask tích hợp mô hình học máy để tối ưu hóa lượng nước tưới dựa trên điều kiện môi trường thực tế.
+An intelligent plant irrigation system combining ESP32 hardware with a Flask server integrated with a deep learning model to optimize water usage based on real-time environmental conditions.
 
-## Tổng quan hệ thống
+## System Overview
 
-- **Phần cứng**: ESP32 kết nối với các cảm biến (độ ẩm đất, nhiệt độ/độ ẩm DHT22, mực nước) và máy bơm
-- **Backend**: Máy chủ Flask chứa mô hình ML dự đoán lượng nước tưới tối ưu
-- **Điều khiển**: Giao diện ứng dụng Blynk cho phép giám sát và điều khiển từ xa
+- **Hardware**: ESP32 connected to sensors (soil moisture, DHT22 temperature/humidity, water level) and a water pump
+- **Backend**: Flask server running an ML model that predicts the optimal watering amount
+- **Control**: Blynk mobile app for remote monitoring and control
 
-## Cơ chế hoạt động
+## How It Works
 
-1. ESP32 thu thập dữ liệu từ các cảm biến
-2. Dữ liệu được gửi đến máy chủ Flask qua API
-3. Máy chủ kết hợp dữ liệu cảm biến với dữ liệu thời tiết từ OpenWeatherMap
-4. Mô hình ML dự đoán lượng nước tưới chính xác (ml)
-5. ESP32 điều khiển máy bơm theo kết quả dự đoán
-6. Người dùng có thể theo dõi và can thiệp qua ứng dụng Blynk
+1. ESP32 collects data from sensors
+2. Data is sent to the Flask server via API
+3. The server enriches sensor data with weather data from OpenWeatherMap
+4. The ML model predicts the precise amount of water needed (ml)
+5. ESP32 controls the pump based on the prediction
+6. Users can monitor and intervene through the Blynk app
 
-## Các tính năng nổi bật
+## Key Features
 
-- Tự động điều chỉnh lượng nước tưới dựa trên nhiều yếu tố (độ ẩm đất, nhiệt độ, dự báo mưa...)
-- Chế độ tự động/thủ công linh hoạt
-- Giao diện giám sát trực quan trên ứng dụng Blynk
-- Mô hình DL cải thiện độ chính xác của quyết định tưới
-- Cảnh báo khi mực nước thấp hoặc gặp lỗi hệ thống
+- Automatically adjusts watering amount based on multiple factors (soil moisture, temperature, rain forecast, etc.)
+- Flexible auto/manual mode switching
+- Visual monitoring dashboard via Blynk app
+- Deep learning model improves watering decision accuracy
+- Low water level and system error alerts
 
-## Yêu cầu kỹ thuật
+## Requirements
 
-- **ESP32** với các cảm biến: độ ẩm đất, DHT22, mực nước, máy bơm
-- **Máy chủ Flask** với Python 3.11 và các thư viện liên quan
-- **Tài khoản Blynk** và OpenWeatherMap API
+- **ESP32** with sensors: soil moisture, DHT22, water level, water pump
+- **Flask server** with Python 3.11 and required libraries
+- **Blynk account** and **OpenWeatherMap API key**
 
-## Tác giả
+## Authors
 
 - [thomasNguyen-196](https://github.com/thomasNguyen-196)
 - [funxyz2](https://github.com/funxyz2)

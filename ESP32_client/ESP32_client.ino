@@ -5,7 +5,7 @@
 
 #define DHTPIN 32
 #define DHTTYPE DHT22
-#define WATER_LEVEL_THRESHOLD 20 // Trên 20% thì bật cảm biến mực nước (1/0)
+#define WATER_LEVEL_THRESHOLD 20 // Above 20% sets water level sensor to 1 (boolean)
 DHT dht(DHTPIN, DHTTYPE);
 
 // Blynk
@@ -28,13 +28,13 @@ char auth[] = BLYNK_AUTH_TOKEN;
 
 const char* serverName = FLASK_SERVER_URL; 
 
-bool isManualMode = false; // Chế độ thủ công từ Blynk App
+bool isManualMode = false; // Manual mode from Blynk App
 bool pumpState = false;
 unsigned long pumpStartTime = 0;
 unsigned long pumpDuration = 0;
 bool isPumpRunning = false;
-float mlWaterGlobal = 0; // lưu trạng thái đã tưới
-String lastPredictionStr = ""; // Lưu kết quả dự đoán
+float mlWaterGlobal = 0; // store watered amount
+String lastPredictionStr = ""; // Store last prediction result
 
 BlynkTimer timer;
 float last_watered_hour = 0;
@@ -58,9 +58,9 @@ void readSensors() {
     data.soil_moisture = constrain(data.soil_moisture, 0, 100);
       
     /* FIX
-    Ở đây đáng lẽ dùng int cho water_level (0% -> 100%)
-    Tuy nhiên vì dataset train model buộc cột này là bool (1/0)
-    Vì vậy, ta xóa đi logic ấy và thay bằng 1/0
+    Ideally water_level would be int (0% -> 100%)
+    However the training dataset requires this column to be bool (1/0)
+    So we remove that logic and use 1/0 instead
       
     //data.water_level = map(analogRead(ANALOG_WATER_LEVEL_PIN), 0, 4095, 0, 100);
     //data.water_level = constrain(data.water_level, 0, 1);
@@ -74,7 +74,7 @@ void readSensors() {
       success = true;
 
       /*
-      Xử lý dữ liệu từ các cảm biến và in ra Serial, đồng thời gán các giá trị tương ứng các biến trong Blynk App
+      Process sensor data, print to Serial, and assign values to corresponding Blynk App variables
       */
       Serial.print("Soil Moisture: "); Serial.println(data.soil_moisture);
       Serial.print("Water level: "); Serial.println(water_level_percent);
@@ -90,13 +90,13 @@ void readSensors() {
       break;
     }
 
-    Serial.println("⚠️ Lỗi đọc cảm biến! Đang thử lại...");
+    Serial.println("Sensor read error! Retrying...");
     delay(1000); 
   }
 
   if (!success) {
-    Serial.println("❌ Không đọc được cảm biến sau nhiều lần thử. Tạm dừng chương trình.");
-    // Gán giá trị đặc biệt để hàm sendToServer() dừng lại
+    Serial.println("Could not read sensors after multiple attempts. Halting program.");
+    // Assign special values so sendToServer() stops
     data.temperature = NAN;
     data.humidity = NAN;
   }
@@ -104,9 +104,9 @@ void readSensors() {
 
 void setup() {
   Serial.begin(9600);
-  Serial.println("Bạn vừa bật Hệ thống Tưới tiêu thông minh, để hệ thống hoạt động đúng, bạn cần phải tưới cho cây của bạn đủ nước");
+  Serial.println("Smart Irrigation System started. Please water your plants sufficiently for correct operation.");
   
-  // Lưu thời điểm đã tưới
+  // Record the last watering time
   last_watered_hour = millis() / 3600000.0;
 
   // pinMode
@@ -118,17 +118,17 @@ void setup() {
 
   Blynk.begin(auth, ssid, pass);
   dht.begin(); 
-  delay(2000); // Đợi cảm biến ổn định
+  delay(2000); // Wait for sensor stabilization
 
-  timer.setInterval(1000L, readSensors);             // Cập nhật UI Blynk App mỗi 1 giây
-  timer.setInterval(7L * 60L * 60L * 1000L, sendToServer);  // Gửi Flask server mỗi 7 tiếng
+  timer.setInterval(1000L, readSensors);             // Update Blynk App UI every 1 second
+  timer.setInterval(7L * 60L * 60L * 1000L, sendToServer);  // Send to Flask server every 7 hours
 }
 
 void loop() {
   Blynk.run();
   timer.run();
 
-  // Tắt máy bơm sau khi đủ thời gian
+  // Turn off pump after sufficient time
   if (isPumpRunning && millis() - pumpStartTime >= pumpDuration) {
     digitalWrite(PUMP_PIN, LOW);
     isPumpRunning = false;
@@ -141,9 +141,9 @@ void loop() {
   }
 }
 
-// Xử lý delay duration cho máy bơm
+// Handle pump duration delay
 void runPumpForML(float ml) {
-  pumpDuration = ml / 10.0 * 1000; // ml / tốc độ (10ml/s) * 1000ms
+  pumpDuration = ml / 10.0 * 1000; // ml / flow rate (10ml/s) * 1000ms
   pumpStartTime = millis();
   digitalWrite(PUMP_PIN, HIGH);
   isPumpRunning = true;
@@ -154,7 +154,7 @@ void sendToServer() {
     HTTPClient http;
     readSensors();
 
-    // Tính số giờ đã trôi qua kể từ lần tưới cuối
+    // Calculate hours elapsed since last watering
     float current_hour = millis() / 3600000.0;
     int hours_since_last_watering = current_hour - last_watered_hour;
     Serial.print("Hours since last watering: "); Serial.println(hours_since_last_watering);
@@ -165,12 +165,12 @@ void sendToServer() {
                       ",\"humidity_air\":" + String(data.humidity) +
                       ",\"last_watered_hour\":" + String(hours_since_last_watering) + "}";
 
-    http.setTimeout(3000); // TImeout 3 giây
+    http.setTimeout(3000); // 3 second timeout
     http.begin(serverName);
     http.addHeader("Content-Type", "application/json");
 
     /*
-    Nhận Response và xử lý
+    Receive Response and process
     */
     int httpResponseCode = http.POST(jsonData);
     delay(200);
@@ -178,14 +178,14 @@ void sendToServer() {
     if (httpResponseCode == 200) {
       String response = http.getString();
       Serial.println("Response: " + response);
-      lastPredictionStr = response;  // Ghi chuỗi response lại cho V7
+      lastPredictionStr = response;  // Save response string for V7
       float mlWater = response.toFloat();
       Serial.print("I will pump this much water: "); Serial.print(mlWater); Serial.println("ml");
 
-      // Nếu Model yêu cầu tưới
+      // If model requires watering
       if (mlWater > 0) {
         runPumpForML(mlWater);
-        // Cập nhật thời điểm tưới gần nhất
+        // Update last watering time
         last_watered_hour = millis() / 3600000.0;
         mlWaterGlobal = mlWater;
       }
@@ -199,12 +199,12 @@ void sendToServer() {
   }
 }
 
-// Callback khi switch V4 thay đổi trạng thái
+// Callback when V4 switch changes state
 BLYNK_WRITE(V4) {
-  // Chặn user chuyển sang manual mode khi đang hệ thống đang tưới
+  // Block user from switching to manual mode while pump is running
   if (isPumpRunning) {
-    Serial.println("⚠️ Pump is running from ML. Manual control is disabled.");
-    Blynk.virtualWrite(V4, pumpState ? 1 : 0); // Reset lại trạng thái trên app
+    Serial.println("Pump is running from ML. Manual control is disabled.");
+    Blynk.virtualWrite(V4, pumpState ? 1 : 0); // Reset switch state on app
     return;
   }
 
@@ -217,38 +217,38 @@ BLYNK_WRITE(V4) {
     Serial.println(pumpState ? "Pump turned ON by user from BlynkApp" : "Pump turned OFF by user from BlynkApp");
   } else {
     Serial.println("PUMP (DE)ACTIVATION IS NOT PERMITTED...");
-    // Thực hiện ghi lại trạng thái cho switch V4 (đồng bộ hoá trạng thái)
+    // Reset the V4 switch state (synchronize state)
     Blynk.virtualWrite(V4, pumpState ? 1 : 0);
   }
 }
 
-// Callback khi switch V4 thay đổi trạng thái
+// Callback when V5 switch changes state
 BLYNK_WRITE(V5) {
   int mode = param.asInt();
   isManualMode = (mode == 1);
   Serial.println(isManualMode ? "INITIATING MANUAL MODE..." : "TURNING OFF MANUAL MODE...");
   
-  // Đảm bảo máy bơm luôn tắt khi không dùng
+  // Ensure pump is always off when not in use
   if (!isManualMode && pumpState) {
-    // Nếu đang tưới tay, và vừa chuyển sang auto mode thì tắt bơm
+    // If pump is on in manual mode and switching to auto, turn pump off
     digitalWrite(PUMP_PIN, LOW);
     pumpState = false;
     Blynk.virtualWrite(V4, 0);
-    Serial.println("🛑 Pump OFF: Switched to Auto mode");
+    Serial.println("Pump OFF: Switched to Auto mode");
   }
 }
 
-// Gọi API thủ công
+// Manual API call
 BLYNK_WRITE(V6) {
   int value = param.asInt();
   if (value == 1) {
-    Serial.println("🔁 Manual Predict Triggered from Blynk App!");
-    sendToServer();  // Gọi hàm gửi dữ liệu đến server Flask
-    Blynk.virtualWrite(V6, 0); // Reset lại nút về OFF sau khi nhấn
+    Serial.println("Manual Predict Triggered from Blynk App!");
+    sendToServer();  // Call function to send data to Flask server
+    Blynk.virtualWrite(V6, 0); // Reset button to OFF after press
 
-    // Gửi kết quả dự đoán về Blynk
+    // Send prediction result to Blynk
     if (lastPredictionStr == "") {
-      Serial.println("⚠️ No prediction result available.");
+      Serial.println("No prediction result available.");
       return;
     }
     String result = lastPredictionStr + " ml";
@@ -259,11 +259,11 @@ BLYNK_WRITE(V6) {
   }
 }
 
-// Button Blynk reset phần mềm trong ESP32
+// Blynk button to reset ESP32 software
 BLYNK_WRITE(V8) {
   int value = param.asInt();
   if (value == 1) {
-    Serial.println("🔁 Người dùng yêu cầu khởi động lại thiết bị...");
+    Serial.println("User requested device restart...");
     ESP.restart();
   }
 }
