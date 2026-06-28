@@ -17,8 +17,6 @@ An intelligent plant irrigation system combining **ESP32** hardware with a **Fla
 
 [![Demo](res/demo/demo-thumbnail.jpg)](https://drive.google.com/file/d/1WFX6o7PApAYUDOxUM-Q_vFmj2AuY5jzK/view?usp=sharing)
 
-[▶ Xem video demo đầy đủ]https://drive.google.com/file/d/1WFX6o7PApAYUDOxUM-Q_vFmj2AuY5jzK/view?usp=sharing)
-
 ---
 
 ## System Architecture
